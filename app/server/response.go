@@ -8,14 +8,16 @@ import (
 )
 
 type HttpCode string
+type ContentType string
 
 const (
-	HTTP_1_1                    = "HTTP/1.1"
-	CRLF                        = "\r\n"
-	JUMP                        = "\r\n\r\n"
-	OK_MSG             HttpCode = "200 OK"
-	NOT_FOUND_MSG      HttpCode = "404 Not Found"
-	INTERNAL_ERROR_MSG HttpCode = "500 Internal Error"
+	HTTP_1_1                       = "HTTP/1.1"
+	CRLF                           = "\r\n"
+	END                            = "\r\n\r\n"
+	OK_MSG             HttpCode    = "200 OK"
+	NOT_FOUND_MSG      HttpCode    = "404 Not Found"
+	INTERNAL_ERROR_MSG HttpCode    = "500 Internal Error"
+	TEXT_PLAIN         ContentType = "text/plain"
 )
 
 type Response struct {
@@ -47,9 +49,14 @@ func (r *Response) Handle() {
 
 	if path == "/" {
 		response = buildResponse("", OK_MSG)
+	} else if strings.HasPrefix(path, "/echo") {
+		route := strings.TrimPrefix(path, "/echo/")
+		response = buildResponse(route, OK_MSG)
 	} else {
 		response = buildResponse("", NOT_FOUND_MSG)
 	}
+
+	log.Println(response)
 
 	r.send(response)
 }
@@ -63,5 +70,22 @@ func (r *Response) send(msg string) {
 }
 
 func buildResponse(payload string, statusCode HttpCode) string {
-	return fmt.Sprintf("%s %s%s%s", HTTP_1_1, statusCode, payload, JUMP)
+	var builder strings.Builder
+
+	builder.WriteString(fmt.Sprintf("%s %s%s", HTTP_1_1, statusCode, CRLF))
+	builder.WriteString(fmt.Sprintf("Content-Type: %s%s", TEXT_PLAIN, CRLF))
+
+	if payload != "" {
+		builder.WriteString(ContentLength(payload))
+		formatted := fmt.Sprintf("%s%s%s", CRLF, payload, CRLF)
+		builder.WriteString(formatted)
+	} else {
+		builder.WriteString(END)
+	}
+
+	return builder.String()
+}
+
+func ContentLength(payload string) string {
+	return fmt.Sprintf("Content-Length: %d%s", len(payload), CRLF)
 }
