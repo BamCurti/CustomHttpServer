@@ -17,5 +17,6 @@ func main() {
 		log.Fatalln(err)
 		os.Exit(1)
 	}
+
 	s.Listen()
 }

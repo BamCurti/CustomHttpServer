@@ -11,6 +11,7 @@ type Server struct {
 	ip       string
 	port     string
 	listener net.Listener
+	routes   map[string]func()
 }
 
 func New(network, ip, port string) (*Server, error) {
