@@ -6,20 +6,23 @@ import (
 )
 
 type HttpConnection struct {
-	l net.Listener
+	listener net.Listener
 }
 
 func NewHttpConnection(l net.Listener) HttpConnection {
 	return HttpConnection{
-		l: l,
+		listener: l,
 	}
 }
 
 func (c *HttpConnection) Accept() {
-	_, err := c.l.Accept()
+	conn, err := c.listener.Accept()
 	if err != nil {
 		log.Println(err.Error())
 		return
 	}
+
+	r := NewResponse(conn)
+	r.Handle()
 
 }

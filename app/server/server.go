@@ -32,6 +32,7 @@ func New(network, ip, port string) (*Server, error) {
 }
 
 func (s *Server) Listen() {
+	defer s.listener.Close()
 	conn := NewHttpConnection(s.listener)
 	conn.Accept()
 }
