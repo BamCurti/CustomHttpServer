@@ -21,42 +21,61 @@ const (
 )
 
 type Response struct {
-	conn net.Conn
+	conn        net.Conn
+	path        string
+	ContentType ContentType
+	userAgent   string
 }
 
 func NewResponse(c net.Conn) *Response {
 	return &Response{
-		conn: c,
+		conn:        c,
+		ContentType: TEXT_PLAIN,
 	}
+}
+
+func (r *Response) FetchRequestInfo() error {
+	buff := make([]byte, 1024)
+	n, err := r.conn.Read(buff)
+	if err != nil {
+		return err
+	}
+
+	// getting path
+	body := string(buff[:n])
+	bodyLines := strings.Split(body, CRLF)
+	startLine := strings.Split(bodyLines[0], " ")
+	r.path = startLine[1]
+
+	//getting userAgent
+	userAgentLine := bodyLines[2]
+	userAgentParsed := strings.Split(userAgentLine, ": ")
+	r.userAgent = userAgentParsed[1]
+
+	return nil
 }
 
 func (r *Response) Handle() {
 	defer r.conn.Close()
 
-	buff := make([]byte, 1024)
-	n, err := r.conn.Read(buff)
+	err := r.FetchRequestInfo()
 	if err != nil {
 		msg := buildResponse(err.Error(), INTERNAL_ERROR_MSG)
 		r.send(msg)
 	}
 
-	body := string(buff[:n])
-	bodyLines := strings.Split(body, "\n")
-	startLine := strings.Split(bodyLines[0], " ")
-	path := startLine[1]
-
 	var response string
 
-	if path == "/" {
+	if r.path == "/" {
 		response = buildResponse("", OK_MSG)
-	} else if strings.HasPrefix(path, "/echo") {
-		route := strings.TrimPrefix(path, "/echo/")
+	} else if strings.HasPrefix(r.path, "/echo") {
+		route := strings.TrimPrefix(r.path, "/echo/")
 		response = buildResponse(route, OK_MSG)
+	} else if r.path == "/user-agent" {
+		response = buildResponse(r.userAgent, OK_MSG)
 	} else {
 		response = buildResponse("", NOT_FOUND_MSG)
 	}
-
-	log.Println(response)
 
 	r.send(response)
 }
