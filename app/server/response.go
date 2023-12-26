@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -18,6 +20,7 @@ const (
 	NOT_FOUND_MSG      HttpCode    = "404 Not Found"
 	INTERNAL_ERROR_MSG HttpCode    = "500 Internal Error"
 	TEXT_PLAIN         ContentType = "text/plain"
+	APP_OCTET_STREAM   ContentType = "application/octet-stream"
 	GET                string      = "GET"
 )
 
@@ -48,13 +51,12 @@ func (r *Response) FetchRequestInfo() error {
 
 	// getting path
 	body := string(buff[:n])
-	log.Println(body)
 	bodyLines := strings.Split(body, CRLF)
 	startLine := strings.Split(bodyLines[0], " ")
 	r.method = startLine[0]
 	r.path = startLine[1]
 
-	//getting userAgent
+	//getting Headers info
 	for _, line := range bodyLines[1:] {
 		if line == "" {
 			break
@@ -62,7 +64,6 @@ func (r *Response) FetchRequestInfo() error {
 
 		parts := strings.Split(line, ": ")
 		r.Headers[parts[0]] = parts[1]
-
 	}
 
 	return nil
@@ -73,21 +74,33 @@ func (r *Response) Handle() {
 
 	err := r.FetchRequestInfo()
 	if err != nil {
-		msg := buildResponse(err.Error(), INTERNAL_ERROR_MSG)
+		msg := buildResponse(err.Error(), INTERNAL_ERROR_MSG, TEXT_PLAIN)
 		r.send(msg)
 	}
 
 	var response string
 
 	if r.path == "/" {
-		response = buildResponse("", OK_MSG)
+		response = buildResponse("", OK_MSG, TEXT_PLAIN)
 	} else if strings.HasPrefix(r.path, "/echo") {
 		route := strings.TrimPrefix(r.path, "/echo/")
-		response = buildResponse(route, OK_MSG)
+		response = buildResponse(route, OK_MSG, TEXT_PLAIN)
 	} else if r.path == "/user-agent" {
-		response = buildResponse(r.Headers["User-Agent"], OK_MSG)
+		response = buildResponse(r.Headers["User-Agent"], OK_MSG, TEXT_PLAIN)
+	} else if strings.HasPrefix(r.path, "/files") {
+		fileName := strings.TrimPrefix(r.path, "/files/")
+		filePath := filepath.Join(*DirFlag, fileName)
+
+		fileContent, err := os.ReadFile(filePath)
+		if err != nil {
+			response = buildResponse("", NOT_FOUND_MSG, TEXT_PLAIN)
+		} else {
+			payload := string(fileContent)
+			response = buildResponse(payload, OK_MSG, APP_OCTET_STREAM)
+		}
+
 	} else {
-		response = buildResponse("", NOT_FOUND_MSG)
+		response = buildResponse("", NOT_FOUND_MSG, TEXT_PLAIN)
 	}
 
 	r.send(response)
@@ -101,11 +114,11 @@ func (r *Response) send(msg string) {
 	}
 }
 
-func buildResponse(payload string, statusCode HttpCode) string {
+func buildResponse(payload string, statusCode HttpCode, ct ContentType) string {
 	var builder strings.Builder
 
 	builder.WriteString(fmt.Sprintf("%s %s%s", HTTP_1_1, statusCode, CRLF))
-	builder.WriteString(fmt.Sprintf("Content-Type: %s%s", TEXT_PLAIN, CRLF))
+	builder.WriteString(fmt.Sprintf("Content-Type: %s%s", ct, CRLF))
 
 	if payload != "" {
 		builder.WriteString(ContentLength(payload))
