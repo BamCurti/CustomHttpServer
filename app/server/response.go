@@ -9,40 +9,26 @@ import (
 	"strings"
 )
 
-type HttpCode string
-type ContentType string
-
-const (
-	HTTP_1_1                       = "HTTP/1.1"
-	CRLF                           = "\r\n"
-	END                            = "\r\n\r\n"
-	OK_MSG             HttpCode    = "200 OK"
-	NOT_FOUND_MSG      HttpCode    = "404 Not Found"
-	INTERNAL_ERROR_MSG HttpCode    = "500 Internal Error"
-	TEXT_PLAIN         ContentType = "text/plain"
-	APP_OCTET_STREAM   ContentType = "application/octet-stream"
-	GET                string      = "GET"
-)
-
-type Response struct {
-	conn    net.Conn
-	path    string
-	method  string
-	Headers map[string]string
+type HttpResponse struct {
+	conn     net.Conn
+	path     string
+	method   string
+	Headers  map[string]string
+	response string
 }
 
-func (r Response) String() string {
+func (r HttpResponse) String() string {
 	return fmt.Sprintf("path: %s\nMethod: %s\nHeaders: %s", r.path, r.method, r.Headers)
 }
 
-func NewResponse(c net.Conn) *Response {
-	return &Response{
+func NewResponse(c net.Conn) *HttpResponse {
+	return &HttpResponse{
 		conn:    c,
 		Headers: map[string]string{},
 	}
 }
 
-func (r *Response) FetchRequestInfo() error {
+func (r *HttpResponse) FetchRequestInfo() error {
 	buff := make([]byte, 1024)
 	n, err := r.conn.Read(buff)
 	if err != nil {
@@ -69,52 +55,65 @@ func (r *Response) FetchRequestInfo() error {
 	return nil
 }
 
-func (r *Response) Handle() {
+func (r *HttpResponse) Handle() {
 	defer r.conn.Close()
 
 	err := r.FetchRequestInfo()
 	if err != nil {
-		msg := buildResponse(err.Error(), INTERNAL_ERROR_MSG, TEXT_PLAIN)
-		r.send(msg)
+		r.buildResponse(err.Error(), INTERNAL_ERROR_MSG, TEXT_PLAIN)
+		r.send()
 	}
 
-	var response string
+	var payload string
+	var hc HttpCode
+	var ct ContentType
 
 	if r.path == "/" {
-		response = buildResponse("", OK_MSG, TEXT_PLAIN)
+		payload = ""
+		hc = OK_MSG
+		ct = TEXT_PLAIN
 	} else if strings.HasPrefix(r.path, "/echo") {
-		route := strings.TrimPrefix(r.path, "/echo/")
-		response = buildResponse(route, OK_MSG, TEXT_PLAIN)
+		payload = strings.TrimPrefix(r.path, "/echo/")
+		hc = OK_MSG
+		ct = TEXT_PLAIN
 	} else if r.path == "/user-agent" {
-		response = buildResponse(r.Headers["User-Agent"], OK_MSG, TEXT_PLAIN)
+		payload = r.Headers["User-Agent"]
+		hc = OK_MSG
+		ct = TEXT_PLAIN
 	} else if strings.HasPrefix(r.path, "/files") {
 		fileName := strings.TrimPrefix(r.path, "/files/")
 		filePath := filepath.Join(*DirFlag, fileName)
 
 		fileContent, err := os.ReadFile(filePath)
 		if err != nil {
-			response = buildResponse("", NOT_FOUND_MSG, TEXT_PLAIN)
+			payload = ""
+			hc = NOT_FOUND_MSG
+			ct = TEXT_PLAIN
 		} else {
-			payload := string(fileContent)
-			response = buildResponse(payload, OK_MSG, APP_OCTET_STREAM)
+			payload = string(fileContent)
+			hc = OK_MSG
+			ct = APP_OCTET_STREAM
 		}
 
 	} else {
-		response = buildResponse("", NOT_FOUND_MSG, TEXT_PLAIN)
+		payload = ""
+		hc = NOT_FOUND_MSG
+		ct = TEXT_PLAIN
 	}
 
-	r.send(response)
+	r.buildResponse(payload, hc, ct)
+	r.send()
 }
 
-func (r *Response) send(msg string) {
-	_, err := r.conn.Write([]byte(msg))
+func (r *HttpResponse) send() {
+	_, err := r.conn.Write([]byte(r.response))
 	if err != nil {
 		log.Println("Failed to write data to connection", err.Error())
 		return
 	}
 }
 
-func buildResponse(payload string, statusCode HttpCode, ct ContentType) string {
+func (r *HttpResponse) buildResponse(payload string, statusCode HttpCode, ct ContentType) {
 	var builder strings.Builder
 
 	builder.WriteString(fmt.Sprintf("%s %s%s", HTTP_1_1, statusCode, CRLF))
@@ -128,9 +127,5 @@ func buildResponse(payload string, statusCode HttpCode, ct ContentType) string {
 		builder.WriteString(END)
 	}
 
-	return builder.String()
-}
-
-func ContentLength(payload string) string {
-	return fmt.Sprintf("Content-Length: %d%s", len(payload), CRLF)
+	r.response = builder.String()
 }

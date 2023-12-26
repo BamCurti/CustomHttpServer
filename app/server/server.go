@@ -6,12 +6,14 @@ import (
 	"net"
 )
 
+type RouteFunction func(*HttpRequest, *HttpResponse)
+
 type Server struct {
 	network  string
 	ip       string
 	port     string
 	listener net.Listener
-	routes   map[string]func()
+	routes   map[string]map[HttpMethod]RouteFunction
 }
 
 func New(network, ip, port string) (*Server, error) {
@@ -32,7 +34,7 @@ func New(network, ip, port string) (*Server, error) {
 	return s, nil
 }
 
-func (s *Server) Listen() {
+func (s *Server) Serve() {
 	defer s.listener.Close()
 
 	for {
@@ -40,10 +42,18 @@ func (s *Server) Listen() {
 
 		if err != nil {
 			log.Println(err.Error())
-			return
+			continue
 		}
 
 		httpConn := NewHttpConnection(conn)
 		go httpConn.Accept()
 	}
+}
+
+func (s *Server) Get(path string, f RouteFunction) {
+	s.routes[path][GET] = f
+}
+
+func (s *Server) Post(path string, f RouteFunction) {
+	s.routes[path][POST] = f
 }

@@ -15,6 +15,7 @@ func main() {
 	// enable directory flag
 	dirFlag := flag.String("directory", ".", "Directory to serve files from")
 	flag.Parse()
+	log.Println(*dirFlag)
 	server.DirFlag = dirFlag
 	s, err := server.New(network, ip, port)
 
@@ -22,5 +23,5 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	s.Listen()
+	s.Serve()
 }

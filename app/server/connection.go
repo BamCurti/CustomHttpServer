@@ -6,7 +6,8 @@ import (
 
 type HttpConnection struct {
 	conn     net.Conn
-	response *Response
+	request  *HttpRequest
+	response *HttpResponse
 }
 
 func NewHttpConnection(conn net.Conn) HttpConnection {
