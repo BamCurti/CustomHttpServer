@@ -18,19 +18,24 @@ const (
 	NOT_FOUND_MSG      HttpCode    = "404 Not Found"
 	INTERNAL_ERROR_MSG HttpCode    = "500 Internal Error"
 	TEXT_PLAIN         ContentType = "text/plain"
+	GET                string      = "GET"
 )
 
 type Response struct {
-	conn        net.Conn
-	path        string
-	ContentType ContentType
-	userAgent   string
+	conn    net.Conn
+	path    string
+	method  string
+	Headers map[string]string
+}
+
+func (r Response) String() string {
+	return fmt.Sprintf("path: %s\nMethod: %s\nHeaders: %s", r.path, r.method, r.Headers)
 }
 
 func NewResponse(c net.Conn) *Response {
 	return &Response{
-		conn:        c,
-		ContentType: TEXT_PLAIN,
+		conn:    c,
+		Headers: map[string]string{},
 	}
 }
 
@@ -43,14 +48,22 @@ func (r *Response) FetchRequestInfo() error {
 
 	// getting path
 	body := string(buff[:n])
+	log.Println(body)
 	bodyLines := strings.Split(body, CRLF)
 	startLine := strings.Split(bodyLines[0], " ")
+	r.method = startLine[0]
 	r.path = startLine[1]
 
 	//getting userAgent
-	userAgentLine := bodyLines[2]
-	userAgentParsed := strings.Split(userAgentLine, ": ")
-	r.userAgent = userAgentParsed[1]
+	for _, line := range bodyLines[1:] {
+		if line == "" {
+			break
+		}
+
+		parts := strings.Split(line, ": ")
+		r.Headers[parts[0]] = parts[1]
+
+	}
 
 	return nil
 }
@@ -72,7 +85,7 @@ func (r *Response) Handle() {
 		route := strings.TrimPrefix(r.path, "/echo/")
 		response = buildResponse(route, OK_MSG)
 	} else if r.path == "/user-agent" {
-		response = buildResponse(r.userAgent, OK_MSG)
+		response = buildResponse(r.Headers["User-Agent"], OK_MSG)
 	} else {
 		response = buildResponse("", NOT_FOUND_MSG)
 	}

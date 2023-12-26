@@ -1,28 +1,21 @@
 package server
 
 import (
-	"log"
 	"net"
 )
 
 type HttpConnection struct {
-	listener net.Listener
+	conn     net.Conn
+	response *Response
 }
 
-func NewHttpConnection(l net.Listener) HttpConnection {
+func NewHttpConnection(conn net.Conn) HttpConnection {
 	return HttpConnection{
-		listener: l,
+		conn: conn,
 	}
 }
 
 func (c *HttpConnection) Accept() {
-	conn, err := c.listener.Accept()
-	if err != nil {
-		log.Println(err.Error())
-		return
-	}
-
-	r := NewResponse(conn)
-	r.Handle()
-
+	c.response = NewResponse(c.conn)
+	c.response.Handle()
 }
