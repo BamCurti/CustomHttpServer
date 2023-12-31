@@ -16,7 +16,9 @@ func NewHttpConnection(conn net.Conn) HttpConnection {
 	}
 }
 
-func (c *HttpConnection) Accept() {
+func (c *HttpConnection) Accept(routes PathHandler) {
+	request, _ := newHttpRequest(c.conn)
 	c.response = NewResponse(c.conn)
+	c.request = request
 	c.response.Handle()
 }

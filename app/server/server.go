@@ -7,6 +7,7 @@ import (
 )
 
 type RouteFunction func(*HttpRequest, *HttpResponse)
+type PathHandler map[string]map[HttpMethod]RouteFunction
 
 type Server struct {
 	network  string
@@ -46,7 +47,7 @@ func (s *Server) Serve() {
 		}
 
 		httpConn := NewHttpConnection(conn)
-		go httpConn.Accept()
+		go httpConn.Accept(s.routes)
 	}
 }
 
