@@ -7,14 +7,14 @@ import (
 )
 
 type RouteFunction func(*HttpRequest, *HttpResponse)
-type PathHandler map[string]map[HttpMethod]RouteFunction
+type PathHandler map[HttpMethod]map[string]RouteFunction
 
 type Server struct {
 	network  string
 	ip       string
 	port     string
 	listener net.Listener
-	routes   map[string]map[HttpMethod]RouteFunction
+	routes   PathHandler
 }
 
 func New(network, ip, port string) (*Server, error) {
@@ -31,6 +31,7 @@ func New(network, ip, port string) (*Server, error) {
 		ip:       ip,
 		port:     port,
 		listener: l,
+		routes:   NewPathHandler(),
 	}
 	return s, nil
 }
@@ -47,14 +48,21 @@ func (s *Server) Serve() {
 		}
 
 		httpConn := NewHttpConnection(conn)
-		go httpConn.Accept(s.routes)
+		go httpConn.Handle(s.routes)
 	}
 }
 
 func (s *Server) Get(path string, f RouteFunction) {
-	s.routes[path][GET] = f
+	s.routes[GET][path] = f
 }
 
 func (s *Server) Post(path string, f RouteFunction) {
-	s.routes[path][POST] = f
+	s.routes[POST][path] = f
+}
+
+func NewPathHandler() PathHandler {
+	ph := make(PathHandler)
+	ph[GET] = make(map[string]RouteFunction)
+	ph[POST] = make(map[string]RouteFunction)
+	return ph
 }

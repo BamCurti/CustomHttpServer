@@ -6,7 +6,6 @@ import (
 )
 
 type HttpRequest struct {
-	conn    net.Conn
 	path    string
 	method  HttpMethod
 	Headers map[string]string
@@ -38,7 +37,6 @@ func newHttpRequest(conn net.Conn) (*HttpRequest, error) {
 	}
 
 	return &HttpRequest{
-		conn:    conn,
 		path:    path,
 		method:  HttpMethod(method),
 		Headers: headers,
