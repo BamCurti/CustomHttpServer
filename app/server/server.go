@@ -6,6 +6,8 @@ import (
 	"net"
 )
 
+const tcp = "tcp"
+
 type RouteFunction func(*HttpRequest, *HttpResponse)
 type PathHandler map[HttpMethod]map[string]RouteFunction
 
@@ -17,9 +19,9 @@ type Server struct {
 	routes   PathHandler
 }
 
-func New(network, ip, port string) (*Server, error) {
+func New(ip, port string) (*Server, error) {
 	addr := fmt.Sprintf("%s:%s", ip, port)
-	l, err := net.Listen(network, addr)
+	l, err := net.Listen(tcp, addr)
 
 	if err != nil {
 		log.Println(err.Error())
@@ -27,7 +29,7 @@ func New(network, ip, port string) (*Server, error) {
 	}
 
 	s := &Server{
-		network:  network,
+		network:  tcp,
 		ip:       ip,
 		port:     port,
 		listener: l,

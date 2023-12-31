@@ -8,7 +8,6 @@ import (
 )
 
 func main() {
-	network := "tcp"
 	ip := "0.0.0.0"
 	port := "4221"
 
@@ -16,7 +15,8 @@ func main() {
 	dirFlag := flag.String("directory", ".", "Directory to serve files from")
 	flag.Parse()
 	server.DirFlag = dirFlag
-	s, err := server.New(network, ip, port)
+
+	s, err := server.New(ip, port)
 
 	if err != nil {
 		log.Fatalln(err)
