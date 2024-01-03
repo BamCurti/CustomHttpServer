@@ -16,21 +16,20 @@ func NewHttpConnection(conn net.Conn) HttpConnection {
 	}
 }
 
-func (c *HttpConnection) Handle(paths PathHandler) {
-	defer c.conn.Close()
+func (c *HttpConnection) Handle(r *Router) {
+	defer c.Close()
+
 	c.request, _ = newHttpRequest(c.conn)
 	c.response = NewResponse(c.conn)
-	f, found := paths[c.request.method][c.request.path]
-	if !found {
-		notFoundHandler(c.request, c.response)
-	}
+
+	method := c.request.method
+	path := c.request.path
+
+	f := r.GetHandler(method, path)
 
 	f(c.request, c.response)
 }
 
-func (c *HttpConnection) Accept(routes PathHandler) {
-	request, _ := newHttpRequest(c.conn)
-	c.response = NewResponse(c.conn)
-	c.request = request
-	c.response.Handle()
+func (c *HttpConnection) Close() {
+	c.conn.Close()
 }

@@ -23,6 +23,7 @@ func main() {
 	}
 
 	s.Get("/", helloServer)
+	s.Get("/echo/{word}", echoHandler)
 
 	s.Serve()
 }
@@ -31,4 +32,8 @@ func helloServer(req *server.HttpRequest, res *server.HttpResponse) {
 	res.ContentType = server.TEXT_PLAIN
 	res.StatusCode = server.OK_MSG
 	res.Write("")
+}
+
+func echoHandler(req *server.HttpRequest, res *server.HttpResponse) {
+
 }
