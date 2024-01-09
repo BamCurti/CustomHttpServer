@@ -3,6 +3,8 @@ package main
 import (
 	"flag"
 	"log"
+	"os"
+	"path/filepath"
 
 	"github.com/codecrafters-io/http-server-starter-go/app/server"
 )
@@ -24,7 +26,8 @@ func main() {
 
 	s.Get("/", helloServer)
 	s.Get("/echo/{word}", echoHandler)
-
+	s.Get("/user-agent", userAgent)
+	s.Get("/files/{filename}", getFile)
 	s.Serve()
 }
 
@@ -35,5 +38,34 @@ func helloServer(req *server.HttpRequest, res *server.HttpResponse) {
 }
 
 func echoHandler(req *server.HttpRequest, res *server.HttpResponse) {
+	payload, _ := req.UrlParam("word")
+	res.ContentType = server.TEXT_PLAIN
+	res.StatusCode = server.OK_MSG
+	res.Write(payload)
+}
 
+func userAgent(req *server.HttpRequest, res *server.HttpResponse) {
+	payload := req.Headers["User-Agent"]
+	res.ContentType = server.TEXT_PLAIN
+	res.StatusCode = server.OK_MSG
+	res.Write(payload)
+}
+
+func getFile(req *server.HttpRequest, res *server.HttpResponse) {
+	fileName, _ := req.UrlParam("filename")
+	filePath := filepath.Join(*server.DirFlag, fileName)
+
+	fileContent, err := os.ReadFile(filePath)
+	var payload string
+
+	if err != nil {
+		payload = ""
+		res.StatusCode = server.NOT_FOUND_MSG
+		res.ContentType = server.TEXT_PLAIN
+	} else {
+		payload = string(fileContent)
+		res.StatusCode = server.OK_MSG
+		res.ContentType = server.APP_OCTET_STREAM
+	}
+	res.Write(payload)
 }

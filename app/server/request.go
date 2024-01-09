@@ -6,9 +6,10 @@ import (
 )
 
 type HttpRequest struct {
-	path    string
-	method  HttpMethod
-	Headers map[string]string
+	path      string
+	method    HttpMethod
+	Headers   map[string]string
+	urlParams map[string]string
 }
 
 func newHttpRequest(conn net.Conn) (*HttpRequest, error) {
@@ -37,8 +38,18 @@ func newHttpRequest(conn net.Conn) (*HttpRequest, error) {
 	}
 
 	return &HttpRequest{
-		path:    path,
-		method:  HttpMethod(method),
-		Headers: headers,
+		path:      path,
+		method:    HttpMethod(method),
+		Headers:   headers,
+		urlParams: nil,
 	}, nil
+}
+
+func (r *HttpRequest) setUrlParams(params map[string]string) {
+	r.urlParams = params
+}
+
+func (r *HttpRequest) UrlParam(param string) (string, bool) {
+	val, exists := r.urlParams[param]
+	return val, exists
 }

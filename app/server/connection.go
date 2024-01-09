@@ -25,7 +25,8 @@ func (c *HttpConnection) Handle(r *Router) {
 	method := c.request.method
 	path := c.request.path
 
-	f := r.GetHandler(method, path)
+	f, qp := r.GetHandler(method, path)
+	c.request.setUrlParams(qp)
 
 	f(c.request, c.response)
 }

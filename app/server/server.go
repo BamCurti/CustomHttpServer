@@ -44,8 +44,7 @@ func (s *Server) Serve() {
 		conn, err := s.listener.Accept()
 
 		if err != nil {
-			log.Println(err.Error())
-			continue
+			log.Panicln(err.Error())
 		}
 
 		httpConn := NewHttpConnection(conn)

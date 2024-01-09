@@ -7,8 +7,10 @@ import (
 )
 
 type Router struct {
-	paths   map[string]*Router
-	handler map[HttpMethod]RouteFunction
+	paths           map[string]*Router
+	handler         map[HttpMethod]RouteFunction
+	urlParamHandler RouteFunction
+	urlParam        string
 }
 
 func NewRouter() *Router {
@@ -19,6 +21,7 @@ func NewRouter() *Router {
 			GET:  nil,
 			POST: nil,
 		},
+		urlParamHandler: nil,
 	}
 }
 
@@ -30,9 +33,16 @@ func (r *Router) Method(method HttpMethod, path string, handler RouteFunction) {
 	}
 
 	key, subpath, err := trimPath(path)
-	log.Println(key, subpath)
 	if err != nil {
 		log.Panicln(err.Error())
+	}
+
+	// subroute is a Url Parameter, needs to be added as urlParamHandler
+	urlParam := getUrlParam(key)
+	if urlParam != "" {
+		r.urlParam = urlParam
+		r.urlParamHandler = handler
+		return
 	}
 
 	subrouter, exist := r.paths[key]
@@ -52,19 +62,24 @@ func (r *Router) Post(path string, handler RouteFunction) {
 	r.Method(POST, path, handler)
 }
 
-func (r *Router) GetHandler(method HttpMethod, path string) RouteFunction {
+func (r *Router) GetHandler(method HttpMethod, path string) (RouteFunction, map[string]string) {
 	if path == "/" {
-		return r.handler[method]
+		return r.handler[method], nil
 	}
 
 	key, subpath, err := trimPath(path)
 	if err != nil {
-		return BadRequestHandler
+		return BadRequestHandler, nil
 	}
 
 	subrouter, exists := r.paths[key]
 	if !exists {
-		return NotFoundHandler
+		if r.urlParamHandler == nil {
+			return NotFoundHandler, nil
+		}
+		return r.urlParamHandler, map[string]string{
+			r.urlParam: path[1:],
+		}
 	}
 
 	return subrouter.GetHandler(method, subpath)
@@ -90,4 +105,12 @@ func trimPath(path string) (string, string, error) {
 	return path[:idx], path[idx:], nil
 }
 
-//
+func getUrlParam(path string) string {
+	length := len(path)
+	log.Println(path, "!")
+	if path[0] != '{' || path[length-1] != '}' {
+		return ""
+	}
+
+	return path[1 : length-1]
+}

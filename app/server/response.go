@@ -4,15 +4,11 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"os"
-	"path/filepath"
 	"strings"
 )
 
 type HttpResponse struct {
 	conn        net.Conn
-	path        string
-	Headers     map[string]string
 	response    string
 	StatusCode  HttpStatusCode
 	ContentType ContentType
@@ -20,51 +16,8 @@ type HttpResponse struct {
 
 func NewResponse(c net.Conn) *HttpResponse {
 	return &HttpResponse{
-		conn:    c,
-		Headers: map[string]string{},
+		conn: c,
 	}
-}
-
-func (r *HttpResponse) Handle() {
-	defer r.conn.Close()
-
-	var payload string
-
-	if r.path == "/" {
-		payload = ""
-		r.StatusCode = OK_MSG
-		r.ContentType = TEXT_PLAIN
-	} else if strings.HasPrefix(r.path, "/echo") {
-		payload = strings.TrimPrefix(r.path, "/echo/")
-		r.StatusCode = OK_MSG
-		r.ContentType = TEXT_PLAIN
-	} else if r.path == "/user-agent" {
-		payload = r.Headers["User-Agent"]
-		r.StatusCode = OK_MSG
-		r.ContentType = TEXT_PLAIN
-	} else if strings.HasPrefix(r.path, "/files") {
-		fileName := strings.TrimPrefix(r.path, "/files/")
-		filePath := filepath.Join(*DirFlag, fileName)
-
-		fileContent, err := os.ReadFile(filePath)
-		if err != nil {
-			payload = ""
-			r.StatusCode = NOT_FOUND_MSG
-			r.ContentType = TEXT_PLAIN
-		} else {
-			payload = string(fileContent)
-			r.StatusCode = OK_MSG
-			r.ContentType = APP_OCTET_STREAM
-		}
-
-	} else {
-		payload = ""
-		r.StatusCode = NOT_FOUND_MSG
-		r.ContentType = TEXT_PLAIN
-	}
-
-	r.buildResponse(payload)
-	r.send()
 }
 
 func (r *HttpResponse) Write(payload string) {
