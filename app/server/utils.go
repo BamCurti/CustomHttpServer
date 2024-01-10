@@ -11,6 +11,7 @@ const (
 	CRLF                              = "\r\n"
 	END                               = "\r\n\r\n"
 	OK_MSG             HttpStatusCode = "200 OK"
+	CREATED_MSG        HttpStatusCode = "201 Created"
 	BAD_REQUEST_MSG    HttpStatusCode = "400 Bad Request"
 	NOT_FOUND_MSG      HttpStatusCode = "404 Not Found"
 	INTERNAL_ERROR_MSG HttpStatusCode = "500 Internal Error"

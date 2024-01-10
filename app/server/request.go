@@ -10,6 +10,7 @@ type HttpRequest struct {
 	method    HttpMethod
 	Headers   map[string]string
 	urlParams map[string]string
+	Content   string
 }
 
 func newHttpRequest(conn net.Conn) (*HttpRequest, error) {
@@ -27,8 +28,11 @@ func newHttpRequest(conn net.Conn) (*HttpRequest, error) {
 	method := startLine[0]
 	path := startLine[1]
 	headers := map[string]string{}
+	var initBody int
 
-	for _, line := range bodyLines[1:] {
+	// Populate the headers
+	for idx, line := range bodyLines[1:] {
+		initBody = idx + 1
 		if line == "" {
 			break
 		}
@@ -37,11 +41,18 @@ func newHttpRequest(conn net.Conn) (*HttpRequest, error) {
 		headers[parts[0]] = parts[1]
 	}
 
+	// save the remaining message
+	var content string
+	if initBody < len(bodyLines) {
+		content = strings.Join(bodyLines[initBody+1:], "\n")
+	}
+
 	return &HttpRequest{
 		path:      path,
 		method:    HttpMethod(method),
 		Headers:   headers,
 		urlParams: nil,
+		Content:   content,
 	}, nil
 }
 

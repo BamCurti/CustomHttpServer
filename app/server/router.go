@@ -6,22 +6,21 @@ import (
 	"strings"
 )
 
+type HandlerMap map[HttpMethod]RouteFunction
+
 type Router struct {
 	paths           map[string]*Router
-	handler         map[HttpMethod]RouteFunction
-	urlParamHandler RouteFunction
+	handler         HandlerMap
+	urlParamHandler HandlerMap
 	urlParam        string
 }
 
 func NewRouter() *Router {
 
 	return &Router{
-		paths: make(map[string]*Router),
-		handler: map[HttpMethod]RouteFunction{
-			GET:  nil,
-			POST: nil,
-		},
-		urlParamHandler: nil,
+		paths:           make(map[string]*Router),
+		handler:         newHandlerMap(),
+		urlParamHandler: newHandlerMap(),
 	}
 }
 
@@ -41,7 +40,7 @@ func (r *Router) Method(method HttpMethod, path string, handler RouteFunction) {
 	urlParam := getUrlParam(key)
 	if urlParam != "" {
 		r.urlParam = urlParam
-		r.urlParamHandler = handler
+		r.urlParamHandler[method] = handler
 		return
 	}
 
@@ -74,10 +73,11 @@ func (r *Router) GetHandler(method HttpMethod, path string) (RouteFunction, map[
 
 	subrouter, exists := r.paths[key]
 	if !exists {
-		if r.urlParamHandler == nil {
+		if r.urlParamHandler[method] == nil {
 			return NotFoundHandler, nil
 		}
-		return r.urlParamHandler, map[string]string{
+
+		return r.urlParamHandler[method], map[string]string{
 			r.urlParam: path[1:],
 		}
 	}
@@ -107,10 +107,16 @@ func trimPath(path string) (string, string, error) {
 
 func getUrlParam(path string) string {
 	length := len(path)
-	log.Println(path, "!")
 	if path[0] != '{' || path[length-1] != '}' {
 		return ""
 	}
 
 	return path[1 : length-1]
+}
+
+func newHandlerMap() HandlerMap {
+	return map[HttpMethod]RouteFunction{
+		GET:  nil,
+		POST: nil,
+	}
 }
